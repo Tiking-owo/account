@@ -1,65 +1,27 @@
 import tkinter as tk
+from tkinter import ttk, messagebox, Toplevel, Label, Entry, Button, filedialog
 import configparser
 import json
 import pymysql
-from tkinter import messagebox, simpledialog, Toplevel, Label, Entry, Button, filedialog
+import pyperclip  # type: ignore
 
 class EmailCodeApp:
     def __init__(self, root):
         self.root = root
         self.root.title("邮箱和代码提交")
-        self.root.geometry("600x400")
-        self.root.resizable(False, False)
+        self.root.geometry("800x500")
+        self.root.resizable(True, True)
 
         self.load_config()
+        self.style = ttk.Style()
+        self.style.configure('TButton', font=('Helvetica', 10), padding=5)
+        self.style.configure('TLabel', font=('Helvetica', 12))
+        self.style.configure('TEntry', font=('Helvetica', 10), padding=5)
 
-        # 创建一个画布和滚动条来放置内容
-        self.canvas = tk.Canvas(root)
-        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.create_widgets()
+    def _on_mousewheel(self, event):
+        self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
 
-        # 滚动条
-        self.scrollbar = tk.Scrollbar(root, orient=tk.VERTICAL, command=self.canvas.yview)
-        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        self.canvas.configure(yscrollcommand=self.scrollbar.set)
-
-        # 创建一个框架来放置所有输入行
-        self.frame = tk.Frame(self.canvas)
-        self.canvas.create_window((0, 0), window=self.frame, anchor="nw")
-
-        # 初始化行数
-        self.rows = []
-
-        # 设置滚动区域
-        self.frame.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
-
-        # 添加标题
-        self.create_headers()
-
-        # 添加第一行输入框
-        self.add_row()
-
-        # 绑定鼠标滚轮事件
-        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
-
-        # 添加“添加新行”按钮
-        self.add_row_button = tk.Button(root, text="添加新行", command=self.add_row)
-        self.add_row_button.pack(pady=10)
-
-        # 添加“添加数据库”按钮
-        self.add_db_button = tk.Button(root, text="添加数据库", command=self.show_add_database_window)
-        self.add_db_button.pack(pady=10)
-
-        # 提交按钮
-        self.submit_button = tk.Button(root, text="提交", command=self.confirm_submit)
-        self.submit_button.pack(pady=10)
-
-        # 导入按钮
-        self.import_button = tk.Button(root, text="导入 account.json", command=self.import_data)
-        self.import_button.pack(pady=10)
-
-        # 加载 account.json 文件中的数据
-        self.load_data()
 
     def load_config(self):
         self.config = configparser.ConfigParser()
@@ -84,56 +46,81 @@ class EmailCodeApp:
             self.config.write(configfile)
         messagebox.showinfo("配置文件生成", "已生成默认配置文件 config.ini")
 
-    def _on_mousewheel(self, event):
-        # 响应鼠标滚轮事件，滚动画布
-        self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+    def create_widgets(self):
+        self.canvas = tk.Canvas(self.root)
+        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+        self.scrollbar = ttk.Scrollbar(self.root, orient=tk.VERTICAL, command=self.canvas.yview)
+        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+
+        self.frame = ttk.Frame(self.canvas)
+        self.canvas.create_window((0, 0), window=self.frame, anchor="nw")
+
+        self.rows = []
+        self.frame.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
+
+        self.create_headers()
+        self.add_row()
+
+        self.add_row_button = ttk.Button(self.root, text="添加新行", command=self.add_row)
+        self.add_row_button.pack(pady=10)
+
+        self.add_db_button = ttk.Button(self.root, text="添加数据库", command=self.show_add_database_window)
+        self.add_db_button.pack(pady=10)
+
+        self.submit_button = ttk.Button(self.root, text="提交", command=self.confirm_submit)
+        self.submit_button.pack(pady=10)
+
+        self.import_button = ttk.Button(self.root, text="导入 account.json", command=self.import_data)
+        self.import_button.pack(pady=10)
+
+        self.load_data()
 
     def create_headers(self):
-        # 邮箱和代码的标题
-        tk.Label(self.frame, text="邮箱").grid(row=0, column=0, padx=5, pady=2)
-        tk.Label(self.frame, text="密码").grid(row=0, column=1, padx=5, pady=2)
-        tk.Label(self.frame, text="已售出").grid(row=0, column=2, padx=5, pady=2)
+        ttk.Label(self.frame, text="邮箱").grid(row=0, column=0, padx=5, pady=2)
+        ttk.Label(self.frame, text="密码").grid(row=0, column=1, padx=5, pady=2)
+        ttk.Label(self.frame, text="已售出").grid(row=0, column=2, padx=5, pady=2)
 
     def add_row(self, email='', code='', sold=False):
         row = {}
 
-        email_entry = tk.Entry(self.frame, width=30)
+        email_entry = ttk.Entry(self.frame, width=30)
         email_entry.grid(row=len(self.rows) + 1, column=0, padx=5, pady=2)
         email_entry.insert(0, email)
         row['email'] = email_entry
 
-        code_entry = tk.Entry(self.frame, width=30)
+        code_entry = ttk.Entry(self.frame, width=30)
         code_entry.grid(row=len(self.rows) + 1, column=1, padx=5, pady=2)
         code_entry.insert(0, code)
         row['code'] = code_entry
 
         sold_var = tk.BooleanVar(value=sold)
-        sold_check = tk.Checkbutton(self.frame, variable=sold_var, text="已售出")
+        sold_check = ttk.Checkbutton(self.frame, variable=sold_var, text="已售出")
         sold_check.grid(row=len(self.rows) + 1, column=2, padx=5, pady=2)
         row['sold'] = sold_var
 
+        copy_button = ttk.Button(self.frame, text="复制", command=lambda: self.copy_to_clipboard(email_entry.get(), code_entry.get()))
+        copy_button.grid(row=len(self.rows) + 1, column=3, padx=5, pady=2)
+
         self.rows.append(row)
 
+    def copy_to_clipboard(self, email, code):
+        copy_text = f"账号: {email} ；密码: {code}"
+        pyperclip.copy(copy_text)
+        messagebox.showinfo("复制成功", "账号和密码已复制到粘贴板")
+
     def confirm_submit(self):
-        # 弹出对话框询问是否同步到数据库
         result = messagebox.askyesno("提交", "是否同步到数据库？")
         self.submit_data(sync_to_db=result)
 
     def submit_data(self, sync_to_db):
-        data = []
-        for row in self.rows:
-            data.append({
-                'email': row['email'].get(),
-                'code': row['code'].get(),
-                'sold': row['sold'].get()
-            })
-
-        # 保存到 account.json 文件
+        data = [{'email': row['email'].get(), 'code': row['code'].get(), 'sold': row['sold'].get()} for row in self.rows]
+        
         with open('account.json', 'w') as json_file:
             json.dump(data, json_file, ensure_ascii=False, indent=4)
 
         if sync_to_db:
-            # 提交到数据库的逻辑
             try:
                 self.submit_to_database(data)
                 messagebox.showinfo("提交", "数据已提交并同步到数据库")
@@ -142,12 +129,7 @@ class EmailCodeApp:
 
     def submit_to_database(self, data):
         try:
-            connection = pymysql.connect(
-                host=self.db_host,
-                user=self.db_user,
-                password=self.db_password,
-                database=self.db_name
-            )
+            connection = pymysql.connect(host=self.db_host, user=self.db_user, password=self.db_password, database=self.db_name)
             cursor = connection.cursor()
             for entry in data:
                 cursor.execute(
